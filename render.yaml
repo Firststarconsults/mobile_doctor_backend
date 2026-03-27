@@ -44,7 +44,7 @@ services:
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
-        sync:false
+        sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
       
