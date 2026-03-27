@@ -1,8 +1,13 @@
 import admin from 'firebase-admin';
 import 'dotenv/config.js';
 
-// Initialize Firebase Admin SDK
-if (!admin.apps.length) {
+// Check if Firebase credentials are provided
+const hasFirebaseCredentials = process.env.FIREBASE_PROJECT_ID && 
+                                process.env.FIREBASE_CLIENT_EMAIL && 
+                                process.env.FIREBASE_PRIVATE_KEY;
+
+// Initialize Firebase Admin SDK only if credentials are available
+if (hasFirebaseCredentials && !admin.apps.length) {
   try {
     const serviceAccount = {
       projectId: process.env.FIREBASE_PROJECT_ID,
@@ -18,6 +23,8 @@ if (!admin.apps.length) {
   } catch (error) {
     console.error('❌ Firebase initialization failed:', error.message);
   }
+} else if (!hasFirebaseCredentials) {
+  console.log('⚠️  Firebase not configured - push notifications will not work');
 }
 
 // Enhanced push notification service

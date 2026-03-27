@@ -1,18 +1,27 @@
 //config-cloudinary.js
 import { v2 as cloudinary } from 'cloudinary';
 
-// Validate required environment variables
-if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-  throw new Error('Missing required Cloudinary environment variables. Please check your .env file.');
+// Check if Cloudinary credentials are provided
+const hasCloudinaryCredentials = process.env.CLOUDINARY_CLOUD_NAME && 
+                                  process.env.CLOUDINARY_API_KEY && 
+                                  process.env.CLOUDINARY_API_SECRET;
+
+// Only configure Cloudinary if credentials are available
+if (hasCloudinaryCredentials) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+} else {
+  console.log('⚠️  Cloudinary not configured - file uploads will not work');
 }
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 export const upload = async (file, folderName) => {
+  if (!hasCloudinaryCredentials) {
+    throw new Error('Cloudinary not configured - cannot upload files');
+  }
+  
   const options = {
     folder: folderName, // Specify the folder name (user identifier)
     public_id: `${folderName}/${Date.now()}`, // Use a unique public_id with timestamp
@@ -28,6 +37,10 @@ export const upload = async (file, folderName) => {
 
 // Function to upload a base64-encoded image to Cloudinary
 export const uploadBase64 = async (base64Data, folderName) => {
+  if (!hasCloudinaryCredentials) {
+    throw new Error('Cloudinary not configured - cannot upload files');
+  }
+  
   const options = {
     folder: folderName,
     public_id: `${folderName}/${Date.now()}`,
