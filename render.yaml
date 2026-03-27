@@ -6,7 +6,7 @@ services:
   - type: web
     name: mobile-doctor-api
     runtime: node
-    buildCommand: npm ci
+    buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /api/health
     envVars:
