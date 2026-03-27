@@ -83,15 +83,8 @@ services:
     # Auto-deploy on git push
     autoDeploy: true
     
-    # Plan (you can upgrade later)
-    plan: standard
+    # Plan - FREE TIER (upgrade later if needed)
+    plan: free
     
     # Regions
-    region: oregon  # Choose closest to your users
-    
-    # Scaling (can be adjusted)
-    scaling:
-      minInstances: 1
-      maxInstances: 3
-      targetCPUPercent: 60
-      targetMemoryPercent: 80
+    region: oregon
