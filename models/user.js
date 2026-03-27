@@ -168,44 +168,49 @@ passport.deserializeUser(function (id, done) {
     });
 });
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.CLIENT_ID,
-      clientSecret: process.env.CLIENT_SECRET,
-      callbackURL:
-        "https://shielded-beach-02064-bf50e65a75d1.herokuapp.com/api/auth/google/user",
-      userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
-    },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        // Try to find the user based on their googleId
-        let user = await User.findOne({ googleId: profile.id });
+// Conditionally configure Google OAuth only if credentials are provided
+if (process.env.CLIENT_ID && process.env.CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.CLIENT_ID,
+        clientSecret: process.env.CLIENT_SECRET,
+        callbackURL:
+          process.env.GOOGLE_CALLBACK_URL || "https://shielded-beach-02064-bf50e65a75d1.herokuapp.com/api/auth/google/user",
+        userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          // Try to find the user based on their googleId
+          let user = await User.findOne({ googleId: profile.id });
 
-        // If the user doesn't exist, create a new user with the profile information
-        if (!user) {
-          user = new User({
-            googleId: profile.id,
-            email: profile._json.email, // Using directly from profile JSON
-            username: profile._json.email, // Assuming username is the email
-            firstName: profile._json.given_name,
-            lastName: profile._json.family_name,
-            role: "patient", // default role
-            isVerified: true, // default isVerified
-            verificationcode: null, //default value
-            profilePhoto: profile._json.picture, // Optional: saving user's Google profile photo
-          });
+          // If the user doesn't exist, create a new user with the profile information
+          if (!user) {
+            user = new User({
+              googleId: profile.id,
+              email: profile._json.email, // Using directly from profile JSON
+              username: profile._json.email, // Assuming username is the email
+              firstName: profile._json.given_name,
+              lastName: profile._json.family_name,
+              role: "patient", // default role
+              isVerified: true, // default isVerified
+              verificationcode: null, //default value
+              profilePhoto: profile._json.picture, // Optional: saving user's Google profile photo
+            });
 
-          await user.save();
+            await user.save();
+          }
+
+          return done(null, user);
+        } catch (error) {
+          return done(error);
         }
-
-        return done(null, user);
-      } catch (error) {
-        return done(error);
       }
-    }
-  )
-);
+    )
+  );
+} else {
+  console.log('⚠️  Google OAuth not configured - skipping Google authentication setup');
+}
 
 userSchema.index({ "location.coordinates": "2dsphere" });
 
