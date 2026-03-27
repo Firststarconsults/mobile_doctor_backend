@@ -95,8 +95,3 @@ services:
       maxInstances: 3
       targetCPUPercent: 60
       targetMemoryPercent: 80
-
-# Optional: Redis for email queue and caching
-databases:
-  - name: mobile-doctor-redis
-    type: redis
