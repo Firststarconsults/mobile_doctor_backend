@@ -1,0 +1,105 @@
+# 🚀 Render Blueprint Configuration
+# This file tells Render how to deploy your Mobile Doctor Backend
+
+services:
+  # Web Service - Main Application
+  - type: web
+    name: mobile-doctor-api
+    runtime: node
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      # Server Configuration
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CLIENT_URL
+        sync: false  # You will set this after deployment
+      
+      # Database (MongoDB Atlas)
+      - key: MONGODB_URI
+        sync: false  # Set this in Render dashboard
+      
+      # Session & Security
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DOMAIN
+        value: mobile-doctor-api.onrender.com
+      
+      # Email (Gmail)
+      - key: G_MAIL
+        sync: false
+      - key: GOOGLE_APPPASSWORD
+        sync: false
+      
+      # Payment (Paystack)
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      
+      # Cloudinary
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync:false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      
+      # Firebase (Push Notifications)
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      
+      # Twilio (SMS)
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      
+      # Redis (Optional - for email queue)
+      - key: REDIS_URL
+        sync: false
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      
+      # File Upload
+      - key: MAX_FILE_SIZE
+        value: 52428800
+      - key: UPLOAD_TEMP_DIR
+        value: /tmp/
+    
+    # Auto-deploy on git push
+    autoDeploy: true
+    
+    # Plan (you can upgrade later)
+    plan: standard
+    
+    # Regions
+    region: oregon  # Choose closest to your users
+    
+    # Scaling (can be adjusted)
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetCPUPercent: 60
+      targetMemoryPercent: 80
+
+# Optional: Redis for email queue and caching
+databases:
+  - name: mobile-doctor-redis
+    type: redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

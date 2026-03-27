@@ -1,0 +1,65 @@
+# 🐳 Mobile Doctor Backend - Docker Compose Configuration
+
+version: '3.8'
+
+services:
+  # Main application
+  app:
+    build: .
+    container_name: mobile-doctor-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env.production
+    depends_on:
+      - redis
+    volumes:
+      - ./uploads:/tmp/uploads
+    networks:
+      - mobile-doctor-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for email queue and caching
+  redis:
+    image: redis:7-alpine
+    container_name: mobile-doctor-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mobile-doctor-network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: mobile-doctor-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - mobile-doctor-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  mobile-doctor-network:
+    driver: bridge
