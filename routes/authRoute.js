@@ -41,26 +41,48 @@ router.get(
 router.get(
   "/google/user",
   passport.authenticate("google", { failureRedirect: "/" }),
-  function (req, res) {
-    // Successful authentication.
-    res.status(200).json({ message: "Successfully logged in with Google Auth", user: {
-      profilePhoto: req.user.profilePhoto,
-      firstName: req.user.firstName,
-      lastName: req.user.lastName,
-      id: req.user._id,
-      username: req.user.username,
-      email: req.user.email,
-      role: req.user.role,
-      isVerified: {status: req.user.isVerified, message: "Email verification"}
-    }, });
+  async function (req, res) {
+    try {
+      // Generate JWT token for Google auth user
+      const jwt = await import('jsonwebtoken');
+      const token = jwt.default.sign(
+        {
+          userId: req.user._id.toString(),
+          email: req.user.email,
+          role: req.user.role,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      // Successful authentication with JWT token
+      res.status(200).json({
+        message: "Successfully logged in with Google Auth",
+        token: token,
+        user: {
+          profilePhoto: req.user.profilePhoto,
+          firstName: req.user.firstName,
+          lastName: req.user.lastName,
+          id: req.user._id,
+          username: req.user.username,
+          email: req.user.email,
+          role: req.user.role,
+          isVerified: {status: req.user.isVerified, message: "Email verification"}
+        },
+      });
+    } catch (error) {
+      console.error("Error generating JWT for Google auth:", error);
+      res.status(500).json({ message: "Error generating authentication token" });
+    }
   }
 );
 
 
 
-// Assuming express and passport are properly set up
+// Get authenticated user details (supports both session and JWT)
 router.get("/googleAuth/getUser", (req, res) => {
-  if (!req.isAuthenticated() || !req.user) {
+  // Check if user is authenticated (either session or JWT will set req.user)
+  if (!req.user) {
     return res.status(401).json({ message: "User not authenticated" });
   }
 
