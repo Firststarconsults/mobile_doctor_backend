@@ -4,60 +4,52 @@ import User from "../models/user.js";
 
 // Middleware to ensure user is authenticated (supports both session and JWT)
 export const ensureAuthenticated = async (req, res, next) => {
-  // First, try session authentication
-  passport.authenticate("session", async (err, user, info) => {
-    if (err) {
-      return next(err);
-    }
+  try {
+    // First, try JWT authentication (newer method)
+    const authHeader = req.headers.authorization;
 
-    // If session auth succeeded, use that
-    if (user) {
-      req.user = user;
-      return next();
-    }
-
-    // If session auth failed, try JWT authentication
-    try {
-      const authHeader = req.headers.authorization;
-
-      if (!authHeader) {
-        return res.status(401).json({ message: "Unauthorized - No authorization header" });
-      }
-
-      if (!authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ message: "Unauthorized - Header must start with Bearer" });
-      }
-
+    if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7); // Remove "Bearer " prefix
 
-      if (!token || token === "") {
-        return res.status(401).json({ message: "Unauthorized - Empty token" });
+      if (token) {
+        try {
+          // Verify JWT token
+          const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+          // Find user from token
+          const userFromToken = await User.findById(decoded.userId);
+
+          if (userFromToken) {
+            // Attach user to request
+            req.user = userFromToken;
+            return next();
+          }
+        } catch (jwtError) {
+          console.error("JWT verification failed:", jwtError.message);
+          // Continue to try session auth if JWT fails
+        }
       }
-
-      // Verify JWT token
-      let decoded;
-      try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-      } catch (verifyError) {
-        console.error("JWT verify failed:", verifyError.message);
-        return res.status(401).json({ message: "Unauthorized - Token verification failed: " + verifyError.message });
-      }
-
-      // Find user from token
-      const userFromToken = await User.findById(decoded.userId);
-
-      if (!userFromToken) {
-        return res.status(401).json({ message: "Unauthorized - User not found in database" });
-      }
-
-      // Attach user to request
-      req.user = userFromToken;
-      return next();
-    } catch (jwtError) {
-      console.error("JWT authentication error:", jwtError.message);
-      return res.status(401).json({ message: "Unauthorized - JWT error: " + jwtError.message });
     }
-  })(req, res, next);
+
+    // If JWT failed or not provided, try session authentication (legacy method)
+    passport.authenticate("session", (err, user, info) => {
+      if (err) {
+        return next(err);
+      }
+
+      if (user) {
+        req.user = user;
+        return next();
+      }
+
+      // Neither JWT nor session auth succeeded
+      return res.status(401).json({ message: "Unauthorized - Please log in" });
+    })(req, res, next);
+
+  } catch (error) {
+    console.error("Authentication error:", error.message);
+    return res.status(401).json({ message: "Unauthorized - Authentication error" });
+  }
 };
 
 // Middleware to ensure user has specific role
