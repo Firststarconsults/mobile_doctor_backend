@@ -20,32 +20,42 @@ export const ensureAuthenticated = async (req, res, next) => {
     try {
       const authHeader = req.headers.authorization;
 
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ message: "Unauthorized - Please log in" });
+      if (!authHeader) {
+        return res.status(401).json({ message: "Unauthorized - No authorization header" });
+      }
+
+      if (!authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "Unauthorized - Header must start with Bearer" });
       }
 
       const token = authHeader.substring(7); // Remove "Bearer " prefix
 
-      if (!token) {
-        return res.status(401).json({ message: "Unauthorized - No token provided" });
+      if (!token || token === "") {
+        return res.status(401).json({ message: "Unauthorized - Empty token" });
       }
 
       // Verify JWT token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      let decoded;
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
+      } catch (verifyError) {
+        console.error("JWT verify failed:", verifyError.message);
+        return res.status(401).json({ message: "Unauthorized - Token verification failed: " + verifyError.message });
+      }
 
       // Find user from token
       const userFromToken = await User.findById(decoded.userId);
 
       if (!userFromToken) {
-        return res.status(401).json({ message: "Unauthorized - User not found" });
+        return res.status(401).json({ message: "Unauthorized - User not found in database" });
       }
 
       // Attach user to request
       req.user = userFromToken;
       return next();
     } catch (jwtError) {
-      console.error("JWT verification error:", jwtError.message);
-      return res.status(401).json({ message: "Unauthorized - Invalid token" });
+      console.error("JWT authentication error:", jwtError.message);
+      return res.status(401).json({ message: "Unauthorized - JWT error: " + jwtError.message });
     }
   })(req, res, next);
 };
