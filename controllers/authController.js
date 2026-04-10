@@ -327,19 +327,25 @@ const authController = {
   },
 
   logout: async function (req, res) {
-    // Check if the user is authenticated
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
     try {
-      // Logout the user
-      req.logout((err) => {
-        if (err) {
-          console.log(err);
-        } else {
-          res.status(200).json({ message: "Successfully logged out" });
-        }
+      // Check if user is authenticated (either session or JWT)
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // If session-based auth, logout from session
+      if (req.isAuthenticated && req.isAuthenticated()) {
+        req.logout((err) => {
+          if (err) {
+            console.log("Session logout error:", err);
+          }
+        });
+      }
+
+      // For JWT, we just return success (client should delete token)
+      res.status(200).json({ 
+        message: "Successfully logged out",
+        note: "Please remove the JWT token from client storage"
       });
     } catch (error) {
       console.error("Error during logout:", error);
@@ -352,8 +358,8 @@ const authController = {
     try {
       const verifyCode = req.body.verifyCode;
 
-      // Check if the user is authenticated
-      if (!req.isAuthenticated()) {
+      // Check if the user is authenticated (session or JWT)
+      if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
