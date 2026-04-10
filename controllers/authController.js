@@ -1,5 +1,6 @@
 //authcontroller
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { io } from "../server.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js";
 import Notification from "../models/notificationModel.js";
@@ -255,9 +256,21 @@ const authController = {
           }
 
 
+          // Generate JWT token
+          const token = jwt.sign(
+            {
+              userId: user._id.toString(),
+              email: user.email,
+              role: user.role,
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: "24h" }
+          );
+
           // Prepare the response data
           const responseData = {
             message: "Successfully logged in",
+            token: token,
             user: {
               profilePhoto: user.profilePhoto,
               firstName: user.firstName,

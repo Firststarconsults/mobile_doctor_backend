@@ -1,16 +1,52 @@
 import passport from "passport";
+import jwt from "jsonwebtoken";
+import User from "../models/user.js";
 
-// Middleware to ensure user is authenticated
-export const ensureAuthenticated = (req, res, next) => {
-  passport.authenticate("session", (err, user, info) => {
+// Middleware to ensure user is authenticated (supports both session and JWT)
+export const ensureAuthenticated = async (req, res, next) => {
+  // First, try session authentication
+  passport.authenticate("session", async (err, user, info) => {
     if (err) {
       return next(err);
     }
-    if (!user) {
-      return res.status(401).json({ message: "Unauthorized - Please log in" });
+
+    // If session auth succeeded, use that
+    if (user) {
+      req.user = user;
+      return next();
     }
-    req.user = user;
-    return next();
+
+    // If session auth failed, try JWT authentication
+    try {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "Unauthorized - Please log in" });
+      }
+
+      const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+      if (!token) {
+        return res.status(401).json({ message: "Unauthorized - No token provided" });
+      }
+
+      // Verify JWT token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // Find user from token
+      const userFromToken = await User.findById(decoded.userId);
+
+      if (!userFromToken) {
+        return res.status(401).json({ message: "Unauthorized - User not found" });
+      }
+
+      // Attach user to request
+      req.user = userFromToken;
+      return next();
+    } catch (jwtError) {
+      console.error("JWT verification error:", jwtError.message);
+      return res.status(401).json({ message: "Unauthorized - Invalid token" });
+    }
   })(req, res, next);
 };
 
