@@ -14,7 +14,8 @@ router.use(ensureAuthenticated);
 router.post('/send', messageLimiter, messageController.sendMessage);
 
 // Get messages for a conversation (with pagination)
-router.get('/:conversationId', validateObjectId("conversationId"), ensureOwner, generalLimiter, messageController.getMessages);
+// Note: ensureOwner removed - controller checks if user is part of conversation
+router.get('/:conversationId', validateObjectId("conversationId"), generalLimiter, messageController.getMessages);
 
 // Get all conversations for a user
 router.get('/conversations/:userId', validateObjectId("userId"), ensureOwner, generalLimiter, messageController.listConversations);
@@ -29,7 +30,8 @@ router.get('/unread-count/:userId', validateObjectId("userId"), ensureOwner, gen
 router.post('/mark-read', messageLimiter, messageController.markAsRead);
 
 // Search messages in a conversation
-router.get('/search/:conversationId', validateObjectId("conversationId"), ensureOwner, generalLimiter, messageController.searchMessages);
+// Note: ensureOwner removed - controller handles authorization
+router.get('/search/:conversationId', validateObjectId("conversationId"), generalLimiter, messageController.searchMessages);
 
 // Delete a message
 router.delete('/:messageId', validateObjectId("messageId"), ensureOwner, messageLimiter, messageController.deleteMessage);
