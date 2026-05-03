@@ -22,6 +22,30 @@ const userController = {
         return res.status(404).json({ message: 'User not found.' });
       }
 
+      // Format address - handle both old string format and new nested format
+      let formattedAddress = user.address;
+      if (typeof user.address === 'string') {
+        // Old format - convert to new structure
+        formattedAddress = {
+          line1: user.address,
+          line2: null,
+          city: null,
+          state: null,
+          country: null,
+          zipCode: null
+        };
+      } else if (user.address && user.address.line1 === '[object Object]') {
+        // Corrupted data - reset to clean structure
+        formattedAddress = {
+          line1: null,
+          line2: null,
+          city: null,
+          state: null,
+          country: null,
+          zipCode: null
+        };
+      }
+
       // Base user profile
       let userProfile = {
         profilePhoto: user.profilePhoto,
@@ -32,7 +56,7 @@ const userController = {
         email: user.email,
         gender: user.gender,
         dateOfBirth: user.dateOfBirth,
-        address: user.address,
+        address: formattedAddress,
         emailVerification: user.isVerified,
         isApproved: user.isApproved,
         kycVerificationStatus: user.kycVerificationStatus
@@ -96,31 +120,38 @@ const userController = {
       if (!existingUser) {
         return res.status(404).json({ message: 'User not found' });
       }
-  
-      // Update user profile information
-      existingUser.firstName = req.body.firstName || existingUser.firstName;
-      existingUser.lastName = req.body.lastName || existingUser.lastName;
-      existingUser.phone = req.body.phone || existingUser.phone;
-      existingUser.gender = req.body.gender || existingUser.gender;
-      existingUser.dateOfBirth = req.body.dateOfBirth || existingUser.dateOfBirth;
+
+      // Build update object
+      const updateData = {};
       
-      // Handle nested address structure
+      if (req.body.firstName !== undefined) updateData.firstName = req.body.firstName;
+      if (req.body.lastName !== undefined) updateData.lastName = req.body.lastName;
+      if (req.body.phone !== undefined) updateData.phone = req.body.phone;
+      if (req.body.gender !== undefined) updateData.gender = req.body.gender;
+      if (req.body.dateOfBirth !== undefined) updateData.dateOfBirth = req.body.dateOfBirth;
+      
+      // Handle nested address structure using dot notation for $set
       if (req.body.address) {
         if (typeof req.body.address === 'object') {
-          // New nested address format
-          existingUser.address.line1 = req.body.address.line1 || existingUser.address.line1;
-          existingUser.address.line2 = req.body.address.line2 || existingUser.address.line2;
-          existingUser.address.city = req.body.address.city || existingUser.address.city;
-          existingUser.address.state = req.body.address.state || existingUser.address.state;
-          existingUser.address.country = req.body.address.country || existingUser.address.country;
-          existingUser.address.zipCode = req.body.address.zipCode || existingUser.address.zipCode;
+          // Use dot notation for each address field
+          if (req.body.address.line1 !== undefined) updateData['address.line1'] = req.body.address.line1;
+          if (req.body.address.line2 !== undefined) updateData['address.line2'] = req.body.address.line2;
+          if (req.body.address.city !== undefined) updateData['address.city'] = req.body.address.city;
+          if (req.body.address.state !== undefined) updateData['address.state'] = req.body.address.state;
+          if (req.body.address.country !== undefined) updateData['address.country'] = req.body.address.country;
+          if (req.body.address.zipCode !== undefined) updateData['address.zipCode'] = req.body.address.zipCode;
         } else {
-          // Legacy string address - store in line1 for backward compatibility
-          existingUser.address.line1 = req.body.address;
+          // Legacy string address - store in line1
+          updateData['address.line1'] = req.body.address;
+          updateData['address.line2'] = null;
+          updateData['address.city'] = null;
+          updateData['address.state'] = null;
+          updateData['address.country'] = null;
+          updateData['address.zipCode'] = null;
         }
       }
   
-      // Check if an image is uploaded
+      // Handle image upload separately
       if (req.files && req.files.image) {
         const { image } = req.files;
         const fileTypes = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -137,18 +168,20 @@ const userController = {
         }
   
         // Upload image to Cloudinary
-        const cloudFile = await upload(image.tempFilePath, userId); // Pass the user ID as the folderName
-  
-        // Update user model with the Cloudinary secure URL (HTTPS) for the specific image type
-        existingUser.profilePhoto = cloudFile.secure_url || cloudFile.url;
+        const cloudFile = await upload(image.tempFilePath, userId);
+        updateData.profilePhoto = cloudFile.secure_url || cloudFile.url;
       }
   
-      // Save the updated user profile
-      await existingUser.save();
+      // Update user using findByIdAndUpdate with $set
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
   
-      return res.status(200).json({ message: 'Profile information updated successfully', user: existingUser });
+      return res.status(200).json({ message: 'Profile information updated successfully', user: updatedUser });
     } catch (error) {
-      console.error(error);
+      console.error('Profile update error:', error);
       return res.status(500).json({ message: 'Unexpected error during profile update' });
     }
   },
