@@ -139,8 +139,8 @@ const userController = {
         // Upload image to Cloudinary
         const cloudFile = await upload(image.tempFilePath, userId); // Pass the user ID as the folderName
   
-        // Update user model with the Cloudinary URL for the specific image type
-        existingUser.profilePhoto = cloudFile.url;
+        // Update user model with the Cloudinary secure URL (HTTPS) for the specific image type
+        existingUser.profilePhoto = cloudFile.secure_url || cloudFile.url;
       }
   
       // Save the updated user profile

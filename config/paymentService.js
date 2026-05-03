@@ -12,19 +12,20 @@ const paystack = axios.create({
   },
 });
 
-export async function chargePatient(email, amount) {
+export async function chargePatient(email, amount, callbackUrl = null) {
   // Convert amount to kobo for Paystack (e.g., NGN 100 = 10000 kobo)
   const body = {
     email: email,
     amount: amount * 100,
     currency: "NGN",
+    callback_url: callbackUrl || process.env.PAYSTACK_CALLBACK_URL || "https://mobile-doctor-api.onrender.com/api/auth/payment-success",
   };
 
   try {
     const response = await paystack.post('/transaction/initialize', body);
     return response.data.data.authorization_url; // Direct user to this URL to complete payment
   } catch (error) {
-    console.error(error);
+    console.error('Paystack charge error:', error.response?.data || error.message);
     return null;
   }
 }

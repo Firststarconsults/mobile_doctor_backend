@@ -163,8 +163,9 @@ const healthProviderControllers = {
   
         // Upload to Cloudinary
         const cloudFile = await upload(image.tempFilePath, providerId);
-        uploadedImages.push({ [key]: cloudFile.url });
-        updateQueries[`images.${key}`] = cloudFile.url;
+        const imageUrl = cloudFile.secure_url || cloudFile.url;
+        uploadedImages.push({ [key]: imageUrl });
+        updateQueries[`images.${key}`] = imageUrl;
       }
   
       // Update user model with the Cloudinary URLs for all images
@@ -340,8 +341,9 @@ const healthProviderControllers = {
   
         // Upload to Cloudinary
         const cloudFile = await upload(image.tempFilePath, providerId);
-        uploadedImages.push({ [key]: cloudFile.url });
-        updateQueries[`images.${key}`] = cloudFile.url;
+        const imageUrl = cloudFile.secure_url || cloudFile.url;
+        uploadedImages.push({ [key]: imageUrl });
+        updateQueries[`images.${key}`] = imageUrl;
       }
   
       // Update user model with the Cloudinary URLs for all images

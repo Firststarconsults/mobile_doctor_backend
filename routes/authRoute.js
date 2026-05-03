@@ -140,6 +140,9 @@ router.post('/finalize-withdrawal/:adminId', ensureAuthenticated, validateObject
 
 router.post('/paystack/webhook', express.json(), authController.handlePaystackWebhook);
 
+// Payment success callback route - redirects back to app after payment
+router.get('/payment-success', authController.handlePaymentCallback);
+
 // Start consultation and handle escrow
 router.post('/start-consultation', authController.startConsultation);
 

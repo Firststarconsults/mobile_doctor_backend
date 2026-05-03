@@ -393,7 +393,7 @@ const authController = {
   },
 
   fundWallet: async (req, res) => {
-    const { amount } = req.body; // Only get amount from the request body
+    const { amount, callbackUrl } = req.body; // Get amount and optional callbackUrl from request body
 
     try {
       const userId = req.params.userId;
@@ -407,7 +407,10 @@ const authController = {
 
       const email = user.email; // Get email from the user model
 
-      const authorizationUrl = await chargePatient(email, amount);
+      // Build callback URL - use provided URL or construct default with userId
+      const redirectUrl = callbackUrl || `${process.env.CLIENT_URL}/payment-success?userId=${userId}`;
+      const authorizationUrl = await chargePatient(email, amount, redirectUrl);
+      
       if (authorizationUrl) {
         // Directly send the authorization URL to the client
         res.status(200).json({ success: true, authorizationUrl });
@@ -417,6 +420,31 @@ const authController = {
     } catch (error) {
       console.error(error);
       res.status(500).json({ success: false, message: error.toString() });
+    }
+  },
+
+  // Handle payment callback after Paystack redirect
+  handlePaymentCallback: async (req, res) => {
+    const { reference, trxref } = req.query;
+    
+    try {
+      // Verify the transaction
+      const verificationResult = await verifyTransaction(reference || trxref);
+      
+      if (verificationResult.success) {
+        // Redirect to app with success status
+        const redirectUrl = `${process.env.CLIENT_URL || 'https://your-app.com'}/wallet?status=success&ref=${reference || trxref}`;
+        return res.redirect(redirectUrl);
+      } else {
+        // Redirect to app with failure status
+        const redirectUrl = `${process.env.CLIENT_URL || 'https://your-app.com'}/wallet?status=failed&message=${encodeURIComponent(verificationResult.message)}`;
+        return res.redirect(redirectUrl);
+      }
+    } catch (error) {
+      console.error('Payment callback error:', error);
+      // Redirect to app with error status
+      const redirectUrl = `${process.env.CLIENT_URL || 'https://your-app.com'}/wallet?status=error`;
+      return res.redirect(redirectUrl);
     }
   },
 
