@@ -218,6 +218,7 @@ if (process.env.CLIENT_ID && process.env.CLIENT_SECRET) {
   console.log('⚠️  Google OAuth not configured - skipping Google authentication setup');
 }
 
-userSchema.index({ "location.coordinates": "2dsphere" });
+// Note: Index already defined in userLocationSchema (line 34)
+// userSchema.index({ "location.coordinates": "2dsphere" }); // Removed duplicate
 
 export default User;
