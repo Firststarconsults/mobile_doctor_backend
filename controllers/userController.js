@@ -31,8 +31,8 @@ const userController = {
         phone: user.phone,
         email: user.email,
         gender: user.gender,
-        country: user.country,
-        state: user.state,
+        dateOfBirth: user.dateOfBirth,
+        address: user.address,
         emailVerification: user.isVerified,
         isApproved: user.isApproved,
         kycVerificationStatus: user.kycVerificationStatus
@@ -102,9 +102,23 @@ const userController = {
       existingUser.lastName = req.body.lastName || existingUser.lastName;
       existingUser.phone = req.body.phone || existingUser.phone;
       existingUser.gender = req.body.gender || existingUser.gender;
-      existingUser.country = req.body.country || existingUser.country;
-      existingUser.state = req.body.state || existingUser.state;
-      existingUser.address = req.body.address || existingUser.address;
+      existingUser.dateOfBirth = req.body.dateOfBirth || existingUser.dateOfBirth;
+      
+      // Handle nested address structure
+      if (req.body.address) {
+        if (typeof req.body.address === 'object') {
+          // New nested address format
+          existingUser.address.line1 = req.body.address.line1 || existingUser.address.line1;
+          existingUser.address.line2 = req.body.address.line2 || existingUser.address.line2;
+          existingUser.address.city = req.body.address.city || existingUser.address.city;
+          existingUser.address.state = req.body.address.state || existingUser.address.state;
+          existingUser.address.country = req.body.address.country || existingUser.address.country;
+          existingUser.address.zipCode = req.body.address.zipCode || existingUser.address.zipCode;
+        } else {
+          // Legacy string address - store in line1 for backward compatibility
+          existingUser.address.line1 = req.body.address;
+        }
+      }
   
       // Check if an image is uploaded
       if (req.files && req.files.image) {

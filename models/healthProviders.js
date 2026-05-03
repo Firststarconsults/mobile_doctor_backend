@@ -47,10 +47,17 @@ const doctorSchema = new mongoose.Schema({
   registrationYear: String,
   registrationCouncil: String,
   country: String,
-  address: String,
   gender: String,
   about: String,
   kycVerification: { type: Boolean, default: false },
+  address: {
+    line1: { type: String, default: null },
+    line2: { type: String, default: null },
+    city: { type: String, default: null },
+    state: { type: String, default: null },
+    country: { type: String, default: null },
+    zipCode: { type: String, default: null }
+  },
   feedback: [{ 
     patient: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     comment: String,
@@ -77,7 +84,14 @@ const pharmacySchema = new mongoose.Schema({
   sponsored: { type: Boolean, default: false },
   kycVerification: { type: Boolean, default: false },
   location: locationSchema,
-  address: { type: String, default: null },
+  address: {
+    line1: { type: String, default: null },
+    line2: { type: String, default: null },
+    city: { type: String, default: null },
+    state: { type: String, default: null },
+    country: { type: String, default: null },
+    zipCode: { type: String, default: null }
+  },
   phone: { type: String, default: null },
   recommendations: [
     {
@@ -117,7 +131,14 @@ const therapistSchema = new mongoose.Schema({
   sponsored: { type: Boolean, default: false },
   kycVerification: { type: Boolean, default: false },
   location: locationSchema,
-  address: { type: String, default: null },
+  address: {
+    line1: { type: String, default: null },
+    line2: { type: String, default: null },
+    city: { type: String, default: null },
+    state: { type: String, default: null },
+    country: { type: String, default: null },
+    zipCode: { type: String, default: null }
+  },
   phone: { type: String, default: null },
   recommendations: [
     {
@@ -156,7 +177,14 @@ const laboratorySchema = new mongoose.Schema({
   isOnline: { type: Boolean, default: false },
   sponsored: { type: Boolean, default: false },
   location: locationSchema,
-  address: { type: String, default: null },
+  address: {
+    line1: { type: String, default: null },
+    line2: { type: String, default: null },
+    city: { type: String, default: null },
+    state: { type: String, default: null },
+    country: { type: String, default: null },
+    zipCode: { type: String, default: null }
+  },
   phone: { type: String, default: null },
   recommendations: [
     {

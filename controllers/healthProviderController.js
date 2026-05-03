@@ -120,9 +120,22 @@ const healthProviderControllers = {
       foundUser.registrationYear = registrationYear || foundUser.registrationYear;
       foundUser.registrationCouncil = registrationCouncil || foundUser.registrationCouncil;
       foundUser.country = country || foundUser.country;
-      foundUser.address = address || foundUser.address;
       foundUser.gender = gender || foundUser.gender;
       foundUser.about = about || foundUser.about;
+      
+      // Handle nested address structure
+      if (address) {
+        if (typeof address === 'object') {
+          foundUser.address.line1 = address.line1 || foundUser.address.line1;
+          foundUser.address.line2 = address.line2 || foundUser.address.line2;
+          foundUser.address.city = address.city || foundUser.address.city;
+          foundUser.address.state = address.state || foundUser.address.state;
+          foundUser.address.country = address.country || foundUser.address.country;
+          foundUser.address.zipCode = address.zipCode || foundUser.address.zipCode;
+        } else {
+          foundUser.address.line1 = address;
+        }
+      }
       if (medicalSpecialtyObj) {
         foundUser.medicalSpecialty = medicalSpecialtyObj; // Assign the object
       }
@@ -287,9 +300,22 @@ const healthProviderControllers = {
       foundUser.registrationYear = registrationYear || foundUser.registrationYear;
       foundUser.registrationCouncil = registrationCouncil || foundUser.registrationCouncil;
       foundUser.country = country || foundUser.country;
-      foundUser.address = address || foundUser.address;
       foundUser.phone = phone || foundUser.phone;
       foundUser.about = about || foundUser.about;
+      
+      // Handle nested address structure
+      if (address) {
+        if (typeof address === 'object') {
+          foundUser.address.line1 = address.line1 || foundUser.address.line1;
+          foundUser.address.line2 = address.line2 || foundUser.address.line2;
+          foundUser.address.city = address.city || foundUser.address.city;
+          foundUser.address.state = address.state || foundUser.address.state;
+          foundUser.address.country = address.country || foundUser.address.country;
+          foundUser.address.zipCode = address.zipCode || foundUser.address.zipCode;
+        } else {
+          foundUser.address.line1 = address;
+        }
+      }
   
       // Save the updated user profile
       await foundUser.save();

@@ -63,10 +63,16 @@ const userSchema = new mongoose.Schema(
     firstName: { type: String, required: false },
     lastName: { type: String, required: false },
     phone: { type: String, required: false },
-    address: { type: String, default: null },
-    state: { type: String, default: null },
+    dateOfBirth: { type: Date, default: null },
     gender: { type: String, default: null },
-    country: { type: String, default: null },
+    address: {
+      line1: { type: String, default: null },
+      line2: { type: String, default: null },
+      city: { type: String, default: null },
+      state: { type: String, default: null },
+      country: { type: String, default: null },
+      zipCode: { type: String, default: null }
+    },
     location: userLocationSchema,
     notifications: [
       {
