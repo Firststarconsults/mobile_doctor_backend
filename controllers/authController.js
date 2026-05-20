@@ -448,6 +448,133 @@ const authController = {
     }
   },
 
+  // Verify payment and credit wallet (client-side verification)
+  verifyPayment: async (req, res) => {
+    const { reference } = req.body;
+    const userId = req.params.userId;
+
+    try {
+      // Validate input
+      if (!reference) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Transaction reference is required" 
+        });
+      }
+
+      console.log(`Verifying payment for user ${userId}, reference: ${reference}`);
+
+      // Step 1: Verify transaction with Paystack
+      const verificationResult = await verifyTransaction(reference);
+      
+      if (!verificationResult.success) {
+        console.error("Paystack verification failed:", verificationResult.message);
+        return res.status(400).json({ 
+          success: false, 
+          message: verificationResult.message || "Payment verification failed" 
+        });
+      }
+
+      const transactionData = verificationResult.data;
+      const email = transactionData.customer.email;
+      const amount = transactionData.amount / 100; // Convert from kobo to naira
+      const status = transactionData.status;
+
+      console.log(`Transaction verified - Email: ${email}, Amount: ₦${amount}, Status: ${status}`);
+
+      // Step 2: Check if transaction was already processed (idempotency)
+      const existingTransaction = await Transaction.findOne({ reference });
+      if (existingTransaction) {
+        console.log("Transaction already processed:", reference);
+        return res.status(200).json({ 
+          success: true, 
+          message: "Transaction already processed",
+          alreadyProcessed: true,
+          walletBalance: existingTransaction.walletBalanceAfter
+        });
+      }
+
+      // Step 3: Verify the transaction status is successful
+      if (status !== "success") {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Transaction not successful. Status: ${status}` 
+        });
+      }
+
+      // Step 4: Find the user and verify ownership
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "User not found" 
+        });
+      }
+
+      // Verify the email matches (security check)
+      if (user.email !== email) {
+        console.error(`Email mismatch - User email: ${user.email}, Transaction email: ${email}`);
+        return res.status(403).json({ 
+          success: false, 
+          message: "Transaction email does not match user email" 
+        });
+      }
+
+      // Step 5: Update wallet balance
+      const previousBalance = user.walletBalance || 0;
+      user.walletBalance += amount;
+      await user.save();
+
+      console.log(`Wallet updated - Previous: ₦${previousBalance}, New: ₦${user.walletBalance}`);
+
+      // Step 6: Record the transaction
+      const transaction = new Transaction({
+        user: user._id,
+        type: "wallet funding",
+        amount: amount,
+        status: "success",
+        reference: reference,
+        date: new Date(),
+        walletBalanceAfter: user.walletBalance
+      });
+      await transaction.save();
+
+      // Step 7: Send notification
+      try {
+        await notificationController.createNotification(
+          user._id,
+          null,
+          "wallet funding",
+          `Your account has been successfully funded with ₦${amount}. Your new wallet balance is ₦${user.walletBalance}.`,
+          transaction._id,
+          "Transaction"
+        );
+      } catch (error) {
+        console.error("Error creating notification:", error);
+        // Don't fail the transaction if notification fails
+      }
+
+      return res.status(200).json({ 
+        success: true, 
+        message: "Payment verified and wallet credited successfully",
+        data: {
+          amount: amount,
+          previousBalance: previousBalance,
+          newBalance: user.walletBalance,
+          reference: reference,
+          transactionId: transaction._id
+        }
+      });
+
+    } catch (error) {
+      console.error("Payment verification error:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: "An error occurred while verifying payment" 
+      });
+    }
+  },
+
   handlePaystackWebhook: async (req, res) => {
     console.log("Webhook received:", req.body);
 

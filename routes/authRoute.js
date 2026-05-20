@@ -143,6 +143,9 @@ router.post('/paystack/webhook', express.json(), authController.handlePaystackWe
 // Payment success callback route - redirects back to app after payment
 router.get('/payment-success', authController.handlePaymentCallback);
 
+// Verify payment and credit wallet (client-side verification)
+router.post('/verify-payment/:userId', ensureAuthenticated, validateObjectId("userId"), ensureOwner, authController.verifyPayment);
+
 // Start consultation and handle escrow
 router.post('/start-consultation', authController.startConsultation);
 

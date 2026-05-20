@@ -59,6 +59,8 @@ const transactionSchema = new mongoose.Schema({
   notes: { type: String }, // For storing additional information about the transaction
   completedAt: { type: Date }, // When the transaction was completed
   date: { type: Date, default: Date.now },
+  reference: { type: String, unique: true, sparse: true }, // Paystack transaction reference for idempotency
+  walletBalanceAfter: { type: Number }, // Wallet balance after transaction (for wallet funding)
 });
 
 // Add pagination plugin to transaction schema
