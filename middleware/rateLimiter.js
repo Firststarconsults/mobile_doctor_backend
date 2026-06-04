@@ -26,12 +26,13 @@ export const authLimiter = rateLimit({
 // Rate limiter for registration (more restrictive)
 export const registrationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // limit each IP to 3 registration attempts per hour
+  max: 10, // limit each IP to 10 registration attempts per hour (increased from 3)
   message: {
     message: "Too many registration attempts, please try again later.",
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful registrations
 });
 
 // Rate limiter for password reset
