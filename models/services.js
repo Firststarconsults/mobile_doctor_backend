@@ -24,7 +24,13 @@ const prescriptionSchema = new mongoose.Schema({
   approved: { type: Boolean, default: false },
   totalCost: { type: Number},
   providerType: { type: String, enum: ['pharmacy', 'laboratory'] }, // Added provider type field
-  provider: { type: mongoose.Schema.Types.ObjectId  } // Reference to either Pharmacy or Laboratory
+  provider: { type: mongoose.Schema.Types.ObjectId  }, // Reference to either Pharmacy or Laboratory
+  testResult: { type: mongoose.Schema.Types.ObjectId, ref: 'TestResult', default: null }, // Link to test result for follow-up prescriptions
+  deliveryStatus: { type: String, enum: ['pending', 'preparing', 'picked_up', 'in_transit', 'delivered', 'failed'], default: 'pending' }, // Delivery status for pharmacy prescriptions
+  estimatedDeliveryTime: { type: Date, default: null }, // Estimated delivery time
+  actualDeliveryTime: { type: Date, default: null }, // Actual delivery time
+  deliveryPerson: { type: String, default: null }, // Delivery person name
+  deliveryPersonPhone: { type: String, default: null }, // Delivery person phone
 });
 
 

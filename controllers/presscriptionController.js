@@ -1078,6 +1078,168 @@ const prescriptionController = {
       res.status(500).json({ message: "Internal server error" });
     }
   },
+
+  // Doctor reviews lab test result and creates follow-up prescription
+  reviewTestResult: async (req, res) => {
+    const { testResultId, diagnosis, medicines, notes } = req.body;
+    const doctorId = req.params.doctorId;
+
+    try {
+      // Fetch the test result
+      const testResult = await TestResult.findById(testResultId)
+        .populate('patient')
+        .populate('prescription');
+
+      if (!testResult) {
+        return res.status(404).json({ message: "Test result not found" });
+      }
+
+      // Verify the doctor is associated with the original prescription
+      const originalPrescription = testResult.prescription;
+      if (!originalPrescription || originalPrescription.doctor.toString() !== doctorId) {
+        return res.status(403).json({ 
+          message: "You are not authorized to review this test result" 
+        });
+      }
+
+      // Create a follow-up prescription linked to the test result
+      const followUpPrescription = new Prescription({
+        doctor: doctorId,
+        patient: testResult.patient._id,
+        session: originalPrescription.session,
+        diagnosis: diagnosis || "Follow-up prescription based on test results",
+        medicines: medicines || [],
+        labTests: [],
+        providerType: "pharmacy", // Follow-up prescriptions are typically for medications
+        status: "pending",
+        approved: false,
+        testResult: testResultId, // Link to the test result
+        notes: notes || "Follow-up prescription after lab test review"
+      });
+
+      await followUpPrescription.save();
+
+      // Notify the patient
+      await notificationController.createNotification(
+        testResult.patient._id,
+        doctorId,
+        "Follow-up Prescription Created",
+        `Dr. has reviewed your lab test results and created a follow-up prescription. Please review and proceed with ordering.`,
+        followUpPrescription._id,
+        "Prescription"
+      );
+
+      // Send system message in chat
+      const originalSession = originalPrescription.session;
+      if (originalSession) {
+        const session = await ConsultationSession.findById(originalSession);
+        if (session && session.conversationId) {
+          const systemMessage = new Message({
+            conversationId: session.conversationId,
+            sender: doctorId,
+            receiver: testResult.patient._id,
+            content: "Your lab test results have been reviewed and a follow-up prescription has been created.",
+            isSystemMessage: true,
+          });
+          await systemMessage.save();
+        }
+      }
+
+      res.status(201).json({
+        message: "Test result reviewed and follow-up prescription created successfully",
+        prescriptionId: followUpPrescription._id,
+        testResultId: testResultId
+      });
+    } catch (error) {
+      console.error("Error reviewing test result:", error);
+      res.status(500).json({ 
+        message: "Error reviewing test result",
+        error: error.message 
+      });
+    }
+  },
+
+  // Update delivery status for pharmacy prescriptions
+  updateDeliveryStatus: async (req, res) => {
+    const { prescriptionId, deliveryStatus, estimatedDeliveryTime, deliveryPerson, deliveryPersonPhone } = req.body;
+    const providerId = req.params.providerId;
+
+    try {
+      // Fetch the prescription
+      const prescription = await Prescription.findById(prescriptionId);
+      if (!prescription) {
+        return res.status(404).json({ message: "Prescription not found" });
+      }
+
+      // Verify the provider is authorized
+      if (prescription.provider.toString() !== providerId) {
+        return res.status(403).json({ 
+          message: "You are not authorized to update this prescription" 
+        });
+      }
+
+      // Verify this is a pharmacy prescription
+      if (prescription.providerType !== 'pharmacy') {
+        return res.status(400).json({ 
+          message: "Delivery tracking is only available for pharmacy prescriptions" 
+        });
+      }
+
+      // Update delivery status
+      const validStatuses = ['pending', 'preparing', 'picked_up', 'in_transit', 'delivered', 'failed'];
+      if (!validStatuses.includes(deliveryStatus)) {
+        return res.status(400).json({ 
+          message: `Invalid delivery status. Valid statuses: ${validStatuses.join(', ')}` 
+        });
+      }
+
+      prescription.deliveryStatus = deliveryStatus;
+      
+      if (estimatedDeliveryTime) {
+        prescription.estimatedDeliveryTime = new Date(estimatedDeliveryTime);
+      }
+      
+      if (deliveryPerson) {
+        prescription.deliveryPerson = deliveryPerson;
+      }
+      
+      if (deliveryPersonPhone) {
+        prescription.deliveryPersonPhone = deliveryPersonPhone;
+      }
+
+      // Set actual delivery time when delivered
+      if (deliveryStatus === 'delivered') {
+        prescription.actualDeliveryTime = new Date();
+      }
+
+      await prescription.save();
+
+      // Notify the patient
+      const patient = await User.findById(prescription.patient);
+      if (patient) {
+        await notificationController.createNotification(
+          patient._id,
+          providerId,
+          "Delivery Status Updated",
+          `Your prescription delivery status has been updated to: ${deliveryStatus}`,
+          prescription._id,
+          "Prescription"
+        );
+      }
+
+      res.status(200).json({
+        message: "Delivery status updated successfully",
+        deliveryStatus: prescription.deliveryStatus,
+        estimatedDeliveryTime: prescription.estimatedDeliveryTime
+      });
+    } catch (error) {
+      console.error("Error updating delivery status:", error);
+      res.status(500).json({ 
+        message: "Error updating delivery status",
+        error: error.message 
+      });
+    }
+  },
 };
 
 export default prescriptionController;

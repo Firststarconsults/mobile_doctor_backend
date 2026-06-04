@@ -18,6 +18,12 @@ router.post('/status/:providerId', validateObjectId("providerId"), ensureHealthP
 router.post('/costing/:providerId', validateObjectId("providerId"), ensureHealthProvider, prescriptionLimiter, prescriptionController.addCosting);
 router.post('/upload-result/:providerId', validateObjectId("providerId"), ensureHealthProvider, prescriptionLimiter, prescriptionController.uploadTestResult);
 
+// Lab result review and follow-up prescription
+router.post('/review-test-result/:doctorId', validateObjectId("doctorId"), ensureHealthProvider, prescriptionLimiter, prescriptionController.reviewTestResult);
+
+// Delivery tracking
+router.post('/update-delivery-status/:providerId', validateObjectId("providerId"), ensureHealthProvider, prescriptionLimiter, prescriptionController.updateDeliveryStatus);
+
 // Patient operations
 router.post('/approve-costing/:patientId', validateObjectId("patientId"), ensurePatient, prescriptionLimiter, prescriptionController.approveCosting);
 
