@@ -149,6 +149,12 @@ router.post('/verify-payment/:userId', ensureAuthenticated, validateObjectId("us
 // Start consultation and handle escrow
 router.post('/start-consultation', authController.startConsultation);
 
+// Doctor accepts consultation
+router.post('/accept-consultation', ensureAuthenticated, authController.acceptConsultation);
+
+// Doctor rejects consultation
+router.post('/reject-consultation', ensureAuthenticated, authController.rejectConsultation);
+
 //cancel consultation
 router.post('/cancelConsultation', authController.cancelConsultation);
 

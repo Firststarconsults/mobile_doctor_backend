@@ -1636,6 +1636,174 @@ const authController = {
     }
   },
 
+  // Doctor accepts consultation request
+  acceptConsultation: async (req, res) => {
+    const { sessionId } = req.body;
+    const doctorId = req.user._id;
+
+    try {
+      const session = await ConsultationSession.findById(sessionId).populate(
+        "patient doctor"
+      );
+
+      if (!session) {
+        return res.status(404).json({ message: "Consultation session not found" });
+      }
+
+      // Verify the doctor is the one assigned to this session
+      if (session.doctor.toString() !== doctorId.toString()) {
+        return res.status(403).json({
+          message: "You are not authorized to accept this consultation",
+        });
+      }
+
+      // Check if session is in scheduled status
+      if (session.status !== "scheduled") {
+        return res.status(400).json({
+          message: `Cannot accept consultation with status: ${session.status}`,
+        });
+      }
+
+      // Update session status to in-progress
+      session.status = "in-progress";
+      await session.save();
+
+      // Notify the patient
+      await notificationController.createNotification(
+        session.patient._id,
+        doctorId,
+        "Consultation Accepted",
+        `Dr. ${session.doctor.firstName} ${session.doctor.lastName} has accepted your consultation request. You can now start the chat.`,
+        session._id,
+        "Consultation"
+      );
+
+      // Send system message in chat
+      const systemMessage = new Message({
+        conversationId: session.conversationId,
+        sender: doctorId,
+        receiver: session.patient._id,
+        content: "The doctor has accepted your consultation. You can now start chatting.",
+        isSystemMessage: true,
+      });
+      await systemMessage.save();
+
+      // Emit socket event
+      io.to(session.patient._id.toString()).emit("consultationAccepted", {
+        sessionId: session._id,
+        doctorName: `${session.doctor.firstName} ${session.doctor.lastName}`,
+      });
+
+      res.status(200).json({
+        message: "Consultation accepted successfully",
+        sessionId: session._id,
+        status: session.status,
+      });
+    } catch (error) {
+      console.error("Error accepting consultation:", error);
+      res.status(500).json({
+        message: "Error accepting consultation",
+        error: error.message,
+      });
+    }
+  },
+
+  // Doctor rejects consultation request (with refund)
+  rejectConsultation: async (req, res) => {
+    const { sessionId, reason } = req.body;
+    const doctorId = req.user._id;
+
+    try {
+      const session = await ConsultationSession.findById(sessionId).populate(
+        "escrowTransaction patient doctor"
+      );
+
+      if (!session) {
+        return res.status(404).json({ message: "Consultation session not found" });
+      }
+
+      // Verify the doctor is the one assigned to this session
+      if (session.doctor.toString() !== doctorId.toString()) {
+        return res.status(403).json({
+          message: "You are not authorized to reject this consultation",
+        });
+      }
+
+      // Check if session is in scheduled status
+      if (session.status !== "scheduled") {
+        return res.status(400).json({
+          message: `Cannot reject consultation with status: ${session.status}`,
+        });
+      }
+
+      // Ensure escrow transaction exists and is in held state
+      if (
+        !session.escrowTransaction ||
+        session.escrowTransaction.escrowStatus !== "held"
+      ) {
+        return res.status(400).json({
+          message: "No eligible escrow transaction found for refund",
+        });
+      }
+
+      // Refund the consultation fee to patient's wallet
+      const patient = await User.findById(session.patient._id);
+      if (patient) {
+        patient.walletBalance += session.escrowTransaction.amount;
+        await patient.save();
+      }
+
+      // Update escrow transaction status to refunded
+      session.escrowTransaction.escrowStatus = "refunded";
+      session.escrowTransaction.notes = reason || "Consultation rejected by doctor";
+      await session.escrowTransaction.save();
+
+      // Update session status
+      session.status = "cancelled";
+      session.endTime = new Date();
+      await session.save();
+
+      // Notify the patient
+      await notificationController.createNotification(
+        session.patient._id,
+        doctorId,
+        "Consultation Rejected",
+        `Dr. ${session.doctor.firstName} ${session.doctor.lastName} has rejected your consultation request. Your consultation fee has been refunded.`,
+        session._id,
+        "Consultation"
+      );
+
+      // Send system message in chat
+      const systemMessage = new Message({
+        conversationId: session.conversationId,
+        sender: doctorId,
+        receiver: session.patient._id,
+        content: `The doctor has rejected your consultation request. Reason: ${reason || "No reason provided"}. Your consultation fee has been refunded.`,
+        isSystemMessage: true,
+      });
+      await systemMessage.save();
+
+      // Emit socket event
+      io.to(session.patient._id.toString()).emit("consultationRejected", {
+        sessionId: session._id,
+        reason: reason || "No reason provided",
+        refundAmount: session.escrowTransaction.amount,
+      });
+
+      res.status(200).json({
+        message: "Consultation rejected and refund processed successfully",
+        sessionId: session._id,
+        refundAmount: session.escrowTransaction.amount,
+      });
+    } catch (error) {
+      console.error("Error rejecting consultation:", error);
+      res.status(500).json({
+        message: "Error rejecting consultation",
+        error: error.message,
+      });
+    }
+  },
+
   cancelConsultation: async (req, res) => {
     const { sessionId } = req.body;
 
