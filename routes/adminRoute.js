@@ -58,4 +58,13 @@ router.get("/:adminId/verification-needed-transactions", validateObjectId("admin
 router.post("/:adminId/manually-verify-transaction", validateObjectId("adminId"), adminLimiter, validateAdminActions, adminController.manuallyVerifyTransaction);
 router.post("/:adminId/check-transfer-status", validateObjectId("adminId"), adminLimiter, validateAdminActions, adminController.checkTransferStatusWithPaystack);
 
+// User management (new endpoints)
+router.put("/:adminId/users/:userId", validateObjectId("adminId"), validateObjectId("userId"), adminLimiter, validateAdminActions, adminController.updateUser);
+router.delete("/:adminId/users/:userId", validateObjectId("adminId"), validateObjectId("userId"), adminLimiter, adminController.deleteUser);
+
+// Financial analytics (new endpoints)
+router.get("/:adminId/user-transactions", validateObjectId("adminId"), adminLimiter, adminController.getUserTransactions);
+router.get("/financial-overview", adminLimiter, adminController.getFinancialOverview);
+router.get("/transaction-trends", adminLimiter, adminController.getTransactionTrends);
+
 export default router;

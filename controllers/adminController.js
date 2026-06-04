@@ -1253,6 +1253,248 @@ suspendUser: async (req, res) => {
     }
   },
 
+  // Update user details (name, email, phone, wallet balance)
+  updateUser: async (req, res) => {
+    try {
+      const adminId = req.user._id;
+      const { userId } = req.params;
+      const { firstName, lastName, email, phone, walletBalance } = req.body;
+
+      // Verify admin role
+      if (req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can update users.',
+        });
+      }
+
+      // Find the user
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      // Update fields if provided
+      if (firstName) user.firstName = firstName;
+      if (lastName) user.lastName = lastName;
+      if (email) user.email = email;
+      if (phone) user.phone = phone;
+      if (walletBalance !== undefined) user.walletBalance = walletBalance;
+
+      await user.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'User updated successfully',
+        user: {
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          walletBalance: user.walletBalance,
+        },
+      });
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error updating user',
+        message: error.message,
+      });
+    }
+  },
+
+  // Delete user
+  deleteUser: async (req, res) => {
+    try {
+      const adminId = req.user._id;
+      const { userId } = req.params;
+
+      // Verify admin role
+      if (req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can delete users.',
+        });
+      }
+
+      // Find and delete the user
+      const user = await User.findByIdAndDelete(userId);
+      if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'User deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error deleting user',
+        message: error.message,
+      });
+    }
+  },
+
+  // Get all user transactions with user details
+  getUserTransactions: async (req, res) => {
+    try {
+      const adminId = req.user._id;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
+
+      // Verify admin role
+      if (req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can view transactions.',
+        });
+      }
+
+      // Get transactions with user details
+      const transactions = await Transaction.find()
+        .populate('user', 'email firstName lastName')
+        .sort({ date: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      const total = await Transaction.countDocuments();
+
+      res.status(200).json({
+        success: true,
+        data: transactions,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: limit,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching user transactions:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching transactions',
+        message: error.message,
+      });
+    }
+  },
+
+  // Get financial overview (revenue by service type)
+  getFinancialOverview: async (req, res) => {
+    try {
+      const adminId = req.user._id;
+
+      // Verify admin role
+      if (req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can view financial overview.',
+        });
+      }
+
+      // Calculate revenue by transaction type
+      const transactions = await Transaction.find({ status: 'success' });
+
+      const totalConsultations = transactions
+        .filter(t => t.type === 'consultation fee')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+      const totalLabTests = transactions
+        .filter(t => t.type === 'lab test')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+      const totalDrugSales = transactions
+        .filter(t => t.type === 'drug purchase')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+      const totalWalletFunding = transactions
+        .filter(t => t.type === 'wallet funding')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          totalConsultations,
+          totalLabTests,
+          totalDrugSales,
+          totalWalletFunding,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching financial overview:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching financial overview',
+        message: error.message,
+      });
+    }
+  },
+
+  // Get transaction trends (monthly history for 6 months)
+  getTransactionTrends: async (req, res) => {
+    try {
+      const adminId = req.user._id;
+
+      // Verify admin role
+      if (req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can view transaction trends.',
+        });
+      }
+
+      // Get transactions from the last 6 months
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const transactions = await Transaction.find({
+        status: 'success',
+        date: { $gte: sixMonthsAgo },
+      }).sort({ date: 1 });
+
+      // Group by month
+      const monthlyData = {};
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      transactions.forEach(tx => {
+        const date = new Date(tx.date);
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+        const monthLabel = monthNames[date.getMonth()];
+
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = {
+            month: monthLabel,
+            transactions: 0,
+            revenue: 0,
+          };
+        }
+
+        monthlyData[monthKey].transactions += 1;
+        monthlyData[monthKey].revenue += tx.amount || 0;
+      });
+
+      // Convert to array and sort
+      const trends = Object.values(monthlyData);
+
+      res.status(200).json({
+        success: true,
+        data: trends,
+      });
+    } catch (error) {
+      console.error('Error fetching transaction trends:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching transaction trends',
+        message: error.message,
+      });
+    }
+  },
+
 };
 
 export default adminController;

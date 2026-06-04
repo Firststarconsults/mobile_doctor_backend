@@ -112,7 +112,7 @@ router.get('/transaction-history/:userId', authController.getTransactionHistory)
 // Get wallet balance
 router.get('/wallet-balance/:userId', authController.getWalletBalance);
 // Endpoint for admin to view all pending withdrawal requests
-router.get('/pending-withdrawals/:adminId', authController.getPendingWithdrawals); 
+router.get('/pending-withdrawals/:adminId', ensureAuthenticated, validateObjectId("adminId"), ensureAdmin, authController.getPendingWithdrawals); 
 // Endpoint to get the active consultation session for a specific patient and doctor
 router.get('/get-active-session/:patientId/:doctorId', authController.getActiveSession);
 //get most recent active session
