@@ -133,17 +133,20 @@ This document compares the operational workflow provided by the project owner wi
 
 ### 1. Doctor Acceptance Flow
 - **Workflow:** Patient chooses doctor, fee deducted, doctor notified, doctor accepts
-- **Status:** ⚠️ **PARTIAL**
+- **Status:** ✅ **COMPLETE**
 - **Current:** Session created with "scheduled" status, doctor notified
-- **Missing:** Explicit "accept" endpoint for doctor to accept/reject consultation
-- **Recommendation:** Add `acceptConsultation` and `rejectConsultation` endpoints
+- **Implemented:** Explicit "accept" and "reject" endpoints with escrow refund on rejection
+- **Endpoints:**
+  - `POST /api/auth/accept-consultation` - Doctor accepts consultation
+  - `POST /api/auth/reject-consultation` - Doctor rejects with automatic refund
 
 ### 2. Lab Result Review & Re-prescription
 - **Workflow:** Doctor reviews result, sends prescription
-- **Status:** ⚠️ **PARTIAL**
+- **Status:** ✅ **COMPLETE**
 - **Current:** TestResult model exists, doctor can create new prescription
-- **Missing:** Explicit link between test result and follow-up prescription
-- **Recommendation:** Add `reviewTestResult` endpoint that creates follow-up prescription
+- **Implemented:** Explicit endpoint that links test result to follow-up prescription
+- **Endpoint:**
+  - `POST /api/prescription/review-test-result/:doctorId` - Doctor reviews result and creates follow-up prescription linked to test result
 
 ---
 
@@ -151,31 +154,35 @@ This document compares the operational workflow provided by the project owner wi
 
 ### 1. Doctor Acceptance/Rejection
 - **Workflow:** Doctor needs to accept or reject consultation request
-- **Status:** ❌ **MISSING**
-- **Needed:**
-  - `POST /auth/accept-consultation/:sessionId` - Doctor accepts
-  - `POST /auth/reject-consultation/:sessionId` - Doctor rejects (with refund)
+- **Status:** ✅ **COMPLETE**
+- **Implemented:**
+  - `POST /api/auth/accept-consultation` - Doctor accepts
+  - `POST /api/auth/reject-consultation` - Doctor rejects (with refund)
 
 ### 2. Lab Result Review Workflow
 - **Workflow:** Doctor reviews lab result and sends follow-up prescription
-- **Status:** ❌ **MISSING**
-- **Needed:**
-  - `POST /prescription/review-test-result/:testResultId` - Doctor reviews result
+- **Status:** ✅ **COMPLETE**
+- **Implemented:**
+  - `POST /api/prescription/review-test-result/:doctorId` - Doctor reviews result
   - Auto-creates follow-up prescription linked to test result
 
 ### 3. Prescription Status Tracking
 - **Workflow:** Track prescription through lifecycle (pending → approved → in-progress → completed)
-- **Status:** ⚠️ **PARTIAL**
-- **Current:** Basic status field exists
-- **Missing:** Detailed status transitions for lab tests vs drug orders
-- **Recommendation:** Enhance status workflow with specific states for each provider type
+- **Status:** ✅ **ENHANCED**
+- **Current:** Enhanced status field with delivery tracking
+- **Implemented:**
+  - Delivery status field: pending, preparing, picked_up, in_transit, delivered, failed
+  - Estimated delivery time
+  - Actual delivery time
+  - Delivery person details
+  - **Endpoint:** `POST /api/prescription/update-delivery-status/:providerId`
 
 ### 4. Delivery Tracking
 - **Workflow:** Track drug delivery status (pending → picked up → delivered)
-- **Status:** ❌ **MISSING**
-- **Needed:**
+- **Status:** ✅ **COMPLETE**
+- **Implemented:**
   - Delivery status field in Prescription model
-  - `POST /prescription/update-delivery-status/:prescriptionId` endpoint
+  - `POST /api/prescription/update-delivery-status/:providerId` endpoint
   - Patient notifications for delivery updates
 
 ---
