@@ -67,4 +67,8 @@ router.get("/:adminId/user-transactions", validateObjectId("adminId"), adminLimi
 router.get("/financial-overview", adminLimiter, adminController.getFinancialOverview);
 router.get("/transaction-trends", adminLimiter, adminController.getTransactionTrends);
 
+// Dispute management
+router.get("/disputes", adminLimiter, adminController.getDisputes);
+router.post("/resolve-dispute", adminLimiter, adminController.resolveDispute);
+
 export default router;

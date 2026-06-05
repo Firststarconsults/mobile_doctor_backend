@@ -68,10 +68,10 @@ export const walletLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Rate limiter for admin operations (very restrictive)
+// Rate limiter for admin operations (more lenient for dashboard)
 export const adminLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // limit each IP to 5 admin operations per hour
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 admin operations per minute (increased from 5/hour)
   message: {
     message: "Too many admin operations, please try again later.",
   },

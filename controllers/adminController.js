@@ -7,6 +7,7 @@ import { Prescription } from "../models/services.js";
 import { sendNotificationEmail } from "../utils/nodeMailer.js"
 import moment from 'moment';
 import { Transaction } from "../models/services.js"
+import Dispute from "../models/disputeModel.js";
 
 // Import necessary modules for the new functions
 import notificationController from "./notificationController.js";
@@ -1490,6 +1491,97 @@ suspendUser: async (req, res) => {
       res.status(500).json({
         success: false,
         error: 'Error fetching transaction trends',
+        message: error.message,
+      });
+    }
+  },
+
+  // Get all disputes
+  getDisputes: async (req, res) => {
+    try {
+      const adminId = req.user._id;
+
+      // Verify admin role
+      if (req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can view disputes.',
+        });
+      }
+
+      const disputes = await Dispute.find()
+        .populate('raisedBy', 'firstName lastName email')
+        .populate('raisedAgainst', 'firstName lastName email')
+        .populate('transaction')
+        .populate('prescription')
+        .populate('consultation')
+        .sort({ createdAt: -1 });
+
+      res.status(200).json({
+        success: true,
+        data: disputes,
+      });
+    } catch (error) {
+      console.error('Error fetching disputes:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching disputes',
+        message: error.message,
+      });
+    }
+  },
+
+  // Resolve a dispute
+  resolveDispute: async (req, res) => {
+    try {
+      const adminId = req.user._id;
+      const { disputeId, status, resolutionNotes, priority } = req.body;
+
+      // Verify admin role
+      if (req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can resolve disputes.',
+        });
+      }
+
+      const dispute = await Dispute.findById(disputeId);
+      if (!dispute) {
+        return res.status(404).json({
+          success: false,
+          error: 'Dispute not found',
+        });
+      }
+
+      // Update dispute
+      dispute.status = status || dispute.status;
+      dispute.resolutionNotes = resolutionNotes || dispute.resolutionNotes;
+      dispute.priority = priority || dispute.priority;
+      dispute.resolvedBy = adminId;
+      dispute.resolvedAt = new Date();
+
+      await dispute.save();
+
+      // Notify the user who raised the dispute
+      await notificationController.createNotification(
+        dispute.raisedBy,
+        adminId,
+        "Dispute Updated",
+        `Your dispute has been updated to: ${status}`,
+        dispute._id,
+        "Dispute"
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Dispute resolved successfully',
+        data: dispute,
+      });
+    } catch (error) {
+      console.error('Error resolving dispute:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error resolving dispute',
         message: error.message,
       });
     }
