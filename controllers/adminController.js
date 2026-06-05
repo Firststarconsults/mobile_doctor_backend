@@ -8,6 +8,7 @@ import { sendNotificationEmail } from "../utils/nodeMailer.js"
 import moment from 'moment';
 import { Transaction } from "../models/services.js"
 import Dispute from "../models/disputeModel.js";
+import AuditLog from "../models/auditLogModel.js";
 
 // Import necessary modules for the new functions
 import notificationController from "./notificationController.js";
@@ -1582,6 +1583,49 @@ suspendUser: async (req, res) => {
       res.status(500).json({
         success: false,
         error: 'Error resolving dispute',
+        message: error.message,
+      });
+    }
+  },
+
+  // Get audit logs
+  getAuditLogs: async (req, res) => {
+    try {
+      const adminId = req.user._id;
+      const { limit = 50, skip = 0, actionType, targetType } = req.query;
+
+      // Verify admin role
+      if (req.user.role !== 'admin' && !req.user.isAdmin) {
+        return res.status(403).json({
+          success: false,
+          error: 'Permission denied. Only admin can view audit logs.',
+        });
+      }
+
+      const query = {};
+      if (actionType) query.actionType = actionType;
+      if (targetType) query.targetType = targetType;
+
+      const auditLogs = await AuditLog.find(query)
+        .populate('performedBy', 'firstName lastName email role')
+        .sort({ timestamp: -1 })
+        .limit(parseInt(limit))
+        .skip(parseInt(skip));
+
+      const total = await AuditLog.countDocuments(query);
+
+      res.status(200).json({
+        success: true,
+        data: auditLogs,
+        total,
+        limit: parseInt(limit),
+        skip: parseInt(skip),
+      });
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error fetching audit logs',
         message: error.message,
       });
     }

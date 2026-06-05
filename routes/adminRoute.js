@@ -71,4 +71,7 @@ router.get("/transaction-trends", adminLimiter, adminController.getTransactionTr
 router.get("/disputes", adminLimiter, adminController.getDisputes);
 router.post("/resolve-dispute", adminLimiter, adminController.resolveDispute);
 
+// Audit logs
+router.get("/audit-logs", adminLimiter, adminController.getAuditLogs);
+
 export default router;
